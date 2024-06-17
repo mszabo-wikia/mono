@@ -141,8 +141,7 @@ namespace Mono.Unity
 			}
 
 			chain?.Dispose();
-			var chainImpl = new X509ChainImplUnityTls(
-				UnityTls.NativeInterface.unitytls_x509list_get_ref (finalCertificateChainNative, &errorState),
+			var chainImpl = new X509ChainImplUnityTls(finalCertificateChainNative, &errorState,
 				reverseOrder: true // the verify callback starts with the root and ends with the leaf. That's the opposite of chain ordering.
 			);
 			chain = new X509Chain(chainImpl);
