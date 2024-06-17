@@ -221,6 +221,7 @@ MonoObject* mono_unity_delegate_get_target(MonoDelegate *delegate);
 gchar* mono_unity_get_runtime_build_info(const char *date, const char *time);
 void* mono_unity_get_field_address(MonoObject *obj, MonoVTable *vt, MonoClassField *field);
 
+MONO_API gboolean mono_unity_assembly_get_assemblyref_checked(MonoImage* image, int index, MonoAssemblyName* aname, MonoError* error);
 MONO_API MonoClass* mono_unity_class_get_checked(MonoImage* image, guint32 token, MonoError* error);
 MONO_API MonoMethod* mono_unity_get_method_checked(MonoImage* image, guint32 token, MonoClass* klass, MonoGenericContext* context, MonoError* error);
 MONO_API MonoClassField* mono_unity_field_from_token_checked(MonoImage *image, guint32 token, MonoClass **retklass, MonoGenericContext *context, MonoError *error);
