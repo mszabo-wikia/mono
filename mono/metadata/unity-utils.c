@@ -18,6 +18,7 @@
 #include <mono/metadata/object.h>
 #include <mono/metadata/metadata.h>
 #include <mono/metadata/tabledefs.h>
+#include <mono/metadata/assembly-internals.h>
 #include <mono/metadata/class-internals.h>
 #include <mono/metadata/class-init.h>
 #include <mono/metadata/object-internals.h>
@@ -1118,6 +1119,11 @@ void* mono_unity_get_field_address(MonoObject *obj, MonoVTable *vt, MonoClassFie
 	}
 
 	return src;
+}
+
+MONO_API gboolean mono_unity_assembly_get_assemblyref_checked(MonoImage* image, int index, MonoAssemblyName* aname, MonoError* error)
+{
+	return mono_assembly_get_assemblyref_checked(image, index, aname, error);
 }
 
 MONO_API MonoClass* mono_unity_class_get_checked(MonoImage *image, guint32 token, MonoError *error)
