@@ -11,9 +11,10 @@ using size_t = System.IntPtr;
 namespace Mono.Unity
 {
 	// Follows mostly X509ChainImplBtls
-	class X509ChainImplUnityTls : X509ChainImpl
+	unsafe class X509ChainImplUnityTls : X509ChainImpl
 	{
 		private X509ChainElementCollection elements;
+		private UnityTls.unitytls_x509list* ownedList;
 		private UnityTls.unitytls_x509list_ref nativeCertificateChain;
 		private X509ChainPolicy policy = new X509ChainPolicy ();
 		private List<X509ChainStatus> chainStatusList;
@@ -22,7 +23,16 @@ namespace Mono.Unity
 		internal X509ChainImplUnityTls (UnityTls.unitytls_x509list_ref nativeCertificateChain, bool reverseOrder = false)
 		{
 			this.elements = null;
+			this.ownedList = null;
 			this.nativeCertificateChain = nativeCertificateChain;
+			this.reverseOrder = reverseOrder;
+		}
+
+		internal X509ChainImplUnityTls (UnityTls.unitytls_x509list* ownedList, UnityTls.unitytls_errorstate* errorState, bool reverseOrder = false)
+		{
+			this.elements = null;
+			this.ownedList = ownedList;
+			this.nativeCertificateChain = UnityTls.NativeInterface.unitytls_x509list_get_ref(ownedList, errorState);
 			this.reverseOrder = reverseOrder;
 		}
 
@@ -96,6 +106,10 @@ namespace Mono.Unity
 				nativeCertificateChain.handle = UnityTls.NativeInterface.UNITYTLS_INVALID_HANDLE;
 				elements.Clear ();
 				elements = null;
+			}
+			if (ownedList != null) {
+				UnityTls.NativeInterface.unitytls_x509list_free (ownedList);
+				ownedList = null;
 			}
 		}
 
