@@ -11,7 +11,16 @@ profile-check:
 	@:
 
 DEFAULT_REFERENCES = mscorlib
-PROFILE_MCS_FLAGS = -d:NET_4_0 -d:NET_4_5 -d:NET_4_6 -d:MONO -d:UNITY_JIT -d:UNITY -d:WIN_PLATFORM -nowarn:1699 -nostdlib $(PLATFORM_DEBUG_FLAGS)
+
+
+ifeq ($(HOST_PLATFORM),win32)
+# The unityjit profiles for all platforms have had WIN_PLATFORM enabled
+# for a number of years/releases. Rather than introduce risk of changing this
+# add a unity specific version to selectively control changes to platform specific code.
+	PLATFORM_FLAGS = -d:UNITY_WIN_PLATFORM
+endif
+
+PROFILE_MCS_FLAGS = -d:NET_4_0 -d:NET_4_5 -d:NET_4_6 -d:MONO -d:UNITY_JIT -d:UNITY -d:WIN_PLATFORM $(PLATFORM_FLAGS) -nowarn:1699 -nostdlib $(PLATFORM_DEBUG_FLAGS)
 API_BIN_PROFILE = v4.7.1
 
 FRAMEWORK_VERSION = 4.5
