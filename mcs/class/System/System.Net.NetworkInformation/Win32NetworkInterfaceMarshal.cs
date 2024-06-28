@@ -34,6 +34,9 @@ namespace System.Net.NetworkInformation
 		[DllImport ("iphlpapi.dll", SetLastError = true)]
 		static extern int GetNetworkParams (IntPtr ptr, ref int size);
 
+		[DllImport("kernel32.dll", SetLastError = true)]
+		static extern unsafe int MultiByteToWideChar(uint CodePage, uint dwFlags, byte* lpMultiByteStr, int cbMultiByte, char* lpWideCharStr, int cchWideChar);
+
 		static Win32_FIXED_INFO fixedInfo;
 		static bool initialized = false;
 
@@ -45,7 +48,36 @@ namespace System.Net.NetworkInformation
 					GetNetworkParams (ptr, ref len);
 					ptr = Marshal.AllocHGlobal(len);
 					GetNetworkParams (ptr, ref len);
-					fixedInfo = Marshal.PtrToStructure<Win32_FIXED_INFO> (ptr);
+					var fixedInfoUnmarshal = Marshal.PtrToStructure<Win32_FIXED_INFO_Marshal> (ptr);
+
+					unsafe string GetStringFromMultiByte(byte * bytes)
+					{
+						// passing CP_ACP or 0 as the CodePage argument to MultiByteToWideChar 
+	  					// CP_ACP is the system default Windows ANSI code page identifier
+	  					var len1 = MultiByteToWideChar(0, 0, bytes, -1 , null, 0);
+						if (len1 == 0)
+							return string.Empty;
+
+						var chars = new char[len1];
+						fixed (char* pChars = chars) {
+							MultiByteToWideChar(0, 0, bytes, -1, pChars, len1);
+						}
+						return new string(chars);
+					}
+
+					unsafe {
+						fixedInfo = new Win32_FIXED_INFO {
+							HostName = GetStringFromMultiByte(fixedInfoUnmarshal.HostName),
+							DomainName = GetStringFromMultiByte(fixedInfoUnmarshal.DomainName),
+							CurrentDnsServer = fixedInfoUnmarshal.CurrentDnsServer,
+							DnsServerList = fixedInfoUnmarshal.DnsServerList,
+							NodeType = fixedInfoUnmarshal.NodeType,
+							ScopeId = GetStringFromMultiByte(fixedInfoUnmarshal.ScopeId),
+							EnableRouting = fixedInfoUnmarshal.EnableRouting,
+							EnableProxy = fixedInfoUnmarshal.EnableProxy,
+							EnableDns = fixedInfoUnmarshal.EnableDns
+						};
+					}
 					initialized = true;
 				}
 				return fixedInfo;
@@ -56,22 +88,31 @@ namespace System.Net.NetworkInformation
 	// They are mostly defined in iptypes.h (included by iphlpapi.h).
 	// grep around /usr/include/w32api/* for identifiers you are curious.
 
-	[StructLayout (LayoutKind.Sequential)]
 	struct Win32_FIXED_INFO
 	{
-
-		const int MAX_HOSTNAME_LEN = 128;
-		const int MAX_DOMAIN_NAME_LEN = 128;
-		const int MAX_SCOPE_ID_LEN = 256;
-		[MarshalAs (UnmanagedType.ByValTStr, SizeConst = MAX_HOSTNAME_LEN + 4)]
 		public string HostName;
-		[MarshalAs (UnmanagedType.ByValTStr, SizeConst = MAX_DOMAIN_NAME_LEN + 4)]
 		public string DomainName;
 		public IntPtr CurrentDnsServer; // to Win32IP_ADDR_STRING
 		public Win32_IP_ADDR_STRING DnsServerList;
 		public NetBiosNodeType NodeType;
-		[MarshalAs (UnmanagedType.ByValTStr, SizeConst = MAX_SCOPE_ID_LEN + 4)]
 		public string ScopeId;
+		public uint EnableRouting;
+		public uint EnableProxy;
+		public uint EnableDns;
+	}
+
+	[StructLayout (LayoutKind.Sequential)]
+	unsafe struct Win32_FIXED_INFO_Marshal
+	{
+		const int MAX_HOSTNAME_LEN = 128;
+		const int MAX_DOMAIN_NAME_LEN = 128;
+		const int MAX_SCOPE_ID_LEN = 256;
+		public fixed byte HostName[MAX_HOSTNAME_LEN+4];
+		public fixed byte DomainName[MAX_DOMAIN_NAME_LEN+4];
+		public IntPtr CurrentDnsServer; // to Win32IP_ADDR_STRING
+		public Win32_IP_ADDR_STRING DnsServerList;
+		public NetBiosNodeType NodeType;
+		public fixed byte ScopeId[MAX_SCOPE_ID_LEN + 4];
 		public uint EnableRouting;
 		public uint EnableProxy;
 		public uint EnableDns;
