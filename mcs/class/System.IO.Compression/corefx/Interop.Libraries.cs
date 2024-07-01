@@ -6,7 +6,7 @@ internal static partial class Interop
 {
     internal static partial class Libraries
     {
-#if WIN_PLATFORM
+#if (WIN_PLATFORM && !UNITY_JIT) || UNITY_WIN_PLATFORM
         internal const string CompressionNative = "__Internal";
 #else
         internal const string CompressionNative = "System.Native";
