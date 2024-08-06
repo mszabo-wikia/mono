@@ -2058,12 +2058,14 @@ mono_emit_simd_intrinsics (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSign
 	const char *class_name;
 	MonoInst *simd_inst = NULL;
 
-	if (is_sys_numerics_assembly (m_class_get_image (cmethod->klass)->assembly)) {
+	if (mono_is_corlib_image (m_class_get_image (cmethod->klass)) ||
+	    is_sys_numerics_assembly (m_class_get_image (cmethod->klass)->assembly)) {
 		simd_inst = emit_sys_numerics_intrinsics (cfg, cmethod, fsig, args);
 		goto on_exit;
 	}
 
-	if (is_sys_numerics_vectors_assembly (m_class_get_image (cmethod->klass)->assembly)) {
+	if (mono_is_corlib_image (m_class_get_image (cmethod->klass)) ||
+	    is_sys_numerics_vectors_assembly (m_class_get_image (cmethod->klass)->assembly)) {
 		simd_inst = emit_sys_numerics_vectors_intrinsics (cfg, cmethod, fsig, args);
 		goto on_exit;
 	}
