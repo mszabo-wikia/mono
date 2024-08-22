@@ -390,7 +390,7 @@ namespace System.Threading
 				var comparer = new TimerComparer();
 
 				if (needReSort) {
-					list.Sort(comparer);
+					list.Sort(comparer.Compare);
 					needReSort = false;
 				}
 
