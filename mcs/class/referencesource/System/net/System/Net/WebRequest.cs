@@ -556,6 +556,24 @@ namespace System.Net {
             res.Add(new WebRequestPrefixElement("https", http));
             res.Add(new WebRequestPrefixElement("file", new FileWebRequestCreator ()));
             res.Add(new WebRequestPrefixElement("ftp", new FtpWebRequestCreator ()));
+#elif UNITY
+			if (Console.IsRunningOnAndroid)
+			{
+				IWebRequestCreate http = new HttpRequestCreator ();
+	            res.Add(new WebRequestPrefixElement("http", http));
+	            res.Add(new WebRequestPrefixElement("https", http));
+	            res.Add(new WebRequestPrefixElement("file", new FileWebRequestCreator ()));
+	            res.Add(new WebRequestPrefixElement("ftp", new FtpWebRequestCreator ()));
+			}
+			else
+			{
+				object cfg = ConfigurationManager.GetSection ("system.net/webRequestModules");
+	            WebRequestModulesSection s = cfg as WebRequestModulesSection;
+	            if (s != null) {
+	                foreach (WebRequestModuleElement el in s.WebRequestModules)
+	                    res.Add (new WebRequestPrefixElement(el.Prefix, el.Type));
+	            }
+			}
 #else
             object cfg = ConfigurationManager.GetSection ("system.net/webRequestModules");
             WebRequestModulesSection s = cfg as WebRequestModulesSection;
