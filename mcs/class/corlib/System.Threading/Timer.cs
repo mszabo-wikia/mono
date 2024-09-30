@@ -427,7 +427,7 @@ namespace System.Threading
 				}
 
 				if (needReSort) {
-					list.Sort(comparer);
+					list.Sort(comparer.Compare);
 					needReSort = false;
 				}
 
