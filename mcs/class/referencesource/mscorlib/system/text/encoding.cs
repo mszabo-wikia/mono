@@ -438,14 +438,14 @@ namespace System.Text
 
             // Our Encoding
 
-            // See if we have a hash table with our encoding in it already.
-            if (encodings != null)
-                encodings.TryGetValue (codepage, out result);
-
-            if (result == null)
+            // Don't conflict with ourselves
+            lock (InternalSyncObject)
             {
-                // Don't conflict with ourselves
-                lock (InternalSyncObject)
+                // See if we have a hash table with our encoding in it already.
+                if (encodings != null)
+                    encodings.TryGetValue (codepage, out result);
+
+                if (result == null)
                 {
                     // Need a new hash table
                     // in case another thread beat us to creating the Dictionary
