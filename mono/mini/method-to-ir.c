@@ -4602,6 +4602,7 @@ inline_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSignature *fsig,
 	MonoMethod *prev_current_method;
 	MonoGenericContext *prev_generic_context;
 	gboolean ret_var_set, prev_ret_var_set, prev_disable_inline, virtual_ = FALSE;
+	MonoProfilerCoverageInfo *prev_coverage_info;
 
 	g_assert (cfg->exception_type == MONO_EXCEPTION_NONE);
 
@@ -4675,6 +4676,7 @@ inline_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSignature *fsig,
 	prev_current_method = cfg->current_method;
 	prev_generic_context = cfg->generic_context;
 	prev_disable_inline = cfg->disable_inline;
+	prev_coverage_info = cfg->coverage_info;
 
 	cfg->ret_var_set = FALSE;
 	cfg->inline_depth ++;
@@ -4699,6 +4701,7 @@ inline_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSignature *fsig,
 	cfg->generic_context = prev_generic_context;
 	cfg->ret_var_set = prev_ret_var_set;
 	cfg->disable_inline = prev_disable_inline;
+	cfg->coverage_info = prev_coverage_info;
 	cfg->inline_depth --;
 
 	if ((costs >= 0 && costs < 60) || inline_always || (costs >= 0 && (cmethod->iflags & METHOD_IMPL_ATTRIBUTE_AGGRESSIVE_INLINING))) {
