@@ -338,18 +338,14 @@ enum NotifyEvents
     PAL_IN_ISDIR = 0x40000000,
 };
 
-#define READDIR_SORT 1
-
 struct DIRWrapper
 {
     DIR* dir;
-#if READDIR_SORT
-    void* result;
+    struct DirectoryEntry* result;
     size_t curIndex;
     size_t numEntries;
 #if !HAVE_REWINDDIR
     char* dirPath;
-#endif
 #endif
 };
 

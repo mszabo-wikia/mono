@@ -346,7 +346,7 @@ static void ConvertDirent(const struct dirent* entry, struct DirectoryEntry* out
     // We use Marshal.PtrToStringAnsi on the managed side, which takes a pointer to
     // the start of the unmanaged string. Give the caller back a pointer to the
     // location of the start of the string that exists in their own byte buffer.
-    outputEntry->Name = entry->d_name;
+    outputEntry->Name = strdup(entry->d_name);
 #if !defined(DT_UNKNOWN)
     // AIX has no d_type, and since we can't get the directory that goes with
     // the filename from ReadDir, we can't stat the file. Return unknown and
@@ -380,12 +380,22 @@ int32_t SystemNative_GetReadDirRBufferSize(void)
 #endif
 }
 
-#if READDIR_SORT
-static int cmpstring(const void *p1, const void *p2)
+static int CompareByName(const void *p1, const void *p2)
 {
-    return strcmp(((struct dirent*) p1)->d_name, ((struct dirent*) p2)->d_name);
+    const struct DirectoryEntry* directoryEntry1 = (const struct DirectoryEntry*)p1;
+    const struct DirectoryEntry* directoryEntry2 = (const struct DirectoryEntry*)p2;
+
+    // Sort NULL values to the end of the array. This can happen when
+    // a file is deleted while GetFiles is called.
+    if (directoryEntry1->Name == directoryEntry2->Name)
+        return 0;
+    if (directoryEntry1->Name == NULL)
+        return 1;
+    if (directoryEntry2->Name == NULL)
+        return -1;
+
+    return strcmp(directoryEntry1->Name, directoryEntry2->Name);
 }
-#endif
 
 // To reduce the number of string copies, the caller of this function is responsible to ensure the memory
 // referenced by outputEntry remains valid until it is read.
@@ -453,51 +463,55 @@ int32_t SystemNative_ReadDirR(struct DIRWrapper* dirWrapper, uint8_t* buffer, in
     (void)buffer;     // unused
     (void)bufferSize; // unused
     errno = 0;
-
-#if READDIR_SORT
-    struct dirent* entry;
+    bool endOfEntries = false;
 
     if (!dirWrapper->result)
     {
+        struct dirent* entry;
         size_t numEntries = 0;
-        while ((entry = readdir(dirWrapper->dir))) numEntries++;
+        while ((entry = readdir(dirWrapper->dir))) 
+            numEntries++;
         if (numEntries)
         {
-            dirWrapper->result = malloc(numEntries * sizeof(struct dirent));
+            // Use calloc to ensure the array is zero-initialized.
+            dirWrapper->result = calloc(numEntries, sizeof(struct DirectoryEntry));
             dirWrapper->curIndex = 0;
+            
 #if HAVE_REWINDDIR
             rewinddir (dirWrapper->dir);
 #else
             closedir(dirWrapper->dir);
             dirWrapper->dir = opendir(dirWrapper->dirPath);
 #endif
+            
+            // If we iterate fewer entries than exist because some files were deleted
+            // since the time we computed numEntries above, that will be fine. Those
+            // extra entries will be zero-initialized and will be sorted to the end
+            // of the array by the qsort below.
             size_t index = 0;
             while ((entry = readdir(dirWrapper->dir)) && index < numEntries)
             {
-                memcpy(&((struct dirent*)dirWrapper->result)[index], entry, sizeof(struct dirent));
+                ConvertDirent(entry, &dirWrapper->result[index]);
                 index++;
             }
 
-            qsort(dirWrapper->result, numEntries, sizeof(struct dirent), cmpstring);
-            dirWrapper->numEntries = index; 
+            dirWrapper->numEntries = index;
+            qsort(dirWrapper->result, dirWrapper->numEntries, sizeof(*dirWrapper->result), CompareByName);
         }
     }
 
     if (dirWrapper->curIndex < dirWrapper->numEntries)
     {
-        entry = &((struct dirent*)dirWrapper->result)[dirWrapper->curIndex];
+        *outputEntry = dirWrapper->result[dirWrapper->curIndex];
         dirWrapper->curIndex++;
     }
-
     else
-        entry = NULL;
-
-#else
-    struct dirent* entry = readdir(dirWrapper->dir);
-#endif
+    {
+        endOfEntries = true;
+    }
 
     // 0 returned with null result -> end-of-stream
-    if (entry == NULL)
+    if (endOfEntries)
     {
         memset(outputEntry, 0, sizeof(*outputEntry)); // managed out param must be initialized
 
@@ -510,7 +524,7 @@ int32_t SystemNative_ReadDirR(struct DIRWrapper* dirWrapper, uint8_t* buffer, in
         return -1;
     }
 #endif
-    ConvertDirent(entry, outputEntry);
+    
     return 0;
 }
 
@@ -523,13 +537,11 @@ struct DIRWrapper* SystemNative_OpenDir(const char* path)
 
     struct DIRWrapper* ret = (struct DIRWrapper*)malloc(sizeof(struct DIRWrapper));
     ret->dir = dir;
-#if READDIR_SORT
     ret->result = NULL;
     ret->curIndex = 0;
     ret->numEntries = 0;
 #if !HAVE_REWINDDIR
     ret->dirPath = strdup(path);
-#endif
 #endif
     return ret;
 }
@@ -538,16 +550,24 @@ int32_t SystemNative_CloseDir(struct DIRWrapper* dirWrapper)
 {
     assert(dirWrapper != NULL);
     int32_t ret = closedir(dirWrapper->dir);
-#if READDIR_SORT
+
     if (dirWrapper->result)
-        free (dirWrapper->result);
+    {
+        for (size_t i = 0; i < dirWrapper->numEntries; i++)
+        {
+            free(dirWrapper->result[i].Name);
+        }
+        
+        free(dirWrapper->result);
+    }
     dirWrapper->result = NULL;
+    
 #if !HAVE_REWINDDIR
     if (dirWrapper->dirPath)
         free(dirWrapper->dirPath);
 #endif
     free(dirWrapper);
-#endif
+
     return ret;
 }
 
