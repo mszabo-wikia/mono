@@ -634,17 +634,20 @@ mono_class_create_from_typedef (MonoImage *image, guint32 type_token, MonoError 
 
 	if (tt->rows > tidx){		
 		mono_metadata_decode_row (tt, tidx, cols_next, MONO_TYPEDEF_SIZE);
-		field_last  = cols_next [MONO_TYPEDEF_FIELD_LIST] - 1;
-		method_last = cols_next [MONO_TYPEDEF_METHOD_LIST] - 1;
+		/* check if the next row has fields at all, if not, then continue run till the end of the table */
+		field_last  = cols_next [MONO_TYPEDEF_FIELD_LIST] ? cols_next [MONO_TYPEDEF_FIELD_LIST] - 1 : image->tables [MONO_TABLE_FIELD].rows;
+		method_last = cols_next [MONO_TYPEDEF_METHOD_LIST] ? cols_next [MONO_TYPEDEF_METHOD_LIST] - 1 : image->tables [MONO_TABLE_METHOD].rows;
 	} else {
 		field_last  = image->tables [MONO_TABLE_FIELD].rows;
 		method_last = image->tables [MONO_TABLE_METHOD].rows;
 	}
 
+	/* validate for both fields and methods that class has non-null list entries */
 	if (cols [MONO_TYPEDEF_FIELD_LIST] && 
 	    cols [MONO_TYPEDEF_FIELD_LIST] <= image->tables [MONO_TABLE_FIELD].rows)
 		mono_class_set_field_count (klass, field_last - first_field_idx);
-	if (cols [MONO_TYPEDEF_METHOD_LIST] <= image->tables [MONO_TABLE_METHOD].rows)
+	if (cols [MONO_TYPEDEF_METHOD_LIST] && 
+	    cols [MONO_TYPEDEF_METHOD_LIST] <= image->tables [MONO_TABLE_METHOD].rows)
 		mono_class_set_method_count (klass, method_last - first_method_idx);
 
 	/* reserve space to store vector pointer in arrays */
