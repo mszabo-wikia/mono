@@ -3927,6 +3927,7 @@ mini_init (const char *filename, const char *runtime_version)
 
 	if (g_hasenv ("MONO_DEBUG")) {
 		mini_parse_debug_options ();
+		mono_enable_jit_map();
 	}
 
 	mono_code_manager_init ();
